@@ -1,0 +1,4 @@
+python/archives/*
+!python/archives/ciso8601-2.3.0-python312-aarch64.tar.bz2
+!python/archives/netifaces-0.11.0-python312-aarch64.tar.bz2
+!python/archives/pyspeex_noise-1.0.2.tar.gz
