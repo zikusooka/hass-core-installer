@@ -1,0 +1,13 @@
+[Unit]
+Description=Home Assistant Core
+After=network.target alsa-restore.service 
+
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/home-assistant-core
+User=HOME_ASSISTANT_USER
+ExecStart=/bin/bash -c "${HOME_ASSISTANT_CMD} -c ${HOME_ASSISTANT_CONFIG_DIR}"
+
+[Install]
+WantedBy=multi-user.target
