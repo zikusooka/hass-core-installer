@@ -59,13 +59,16 @@ HOME_ASSISTANT_DEFAULT_OLD_VERSION=${HOME_ASSISTANT_DEFAULT_NEW_VERSION}
 if [[ ! -z ${HOME_ASSISTANT_REQUESTED_OLD_VERSION} ]];
 then
 	HOME_ASSISTANT_OLD_VERSION="${HOME_ASSISTANT_REQUESTED_OLD_VERSION}"
+	INSTALL_TYPE="Upgrade to"
 
 elif [[ -x /usr/bin/hass ]];
 then
 	HOME_ASSISTANT_OLD_VERSION="$(/usr/bin/hass --version)"
+	INSTALL_TYPE="Install"
 
 else
 	HOME_ASSISTANT_OLD_VERSION="${HOME_ASSISTANT_DEFAULT_OLD_VERSION}"
+	INSTALL_TYPE="Install"
 fi
 
 # Source configuration for OEM
@@ -85,14 +88,14 @@ cat <<ET
 #                                                                                       #          
 #  Welcome to HASS Core Installer!                                                      #
 #                                                                                       #
-#  You are about to install Home Assistant Core Version: ${HOME_ASSISTANT_NEW_VERSION}  
+#  You are about to ${INSTALL_TYPE} Home Assistant Core - Version ${HOME_ASSISTANT_NEW_VERSION}
 #                                                                                       #
-#  This script will begin shortly.  To cancel, press 'Ctrl+C'                           #
+#  Please wait or to cancel, press 'Ctrl+C'                                             #
 #                                                                                       #
 #########################################################################################
 
 ET
-sleep 20
+sleep 15
 clear
 
 # Uninstall previous homeassistant
