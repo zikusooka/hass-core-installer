@@ -8,7 +8,7 @@ Python virtual environment on Linux. It can also be installed on Arm-64 bit devi
 Raspberry Pi 5.
   
 I created it to suppliment the [Official methods](https://www.home-assistant.io/installation/) of installing Home Assistant which are mainly aimed at beginners and non-advanced Linux users. Yet, while those methods offer an easy and quick way to install HASS and get going, they do not offer the flexibility, especially when it comes to 
-upgrading to thje new and latest versions of Home Assistant.
+upgrading to the new and latest versions of Home Assistant.
 
 HASS Core Installer is mainly used by our company i.e. Jambula Labs to quickly install and upgrade Home Assistant to the latest  releases on Linux.  This includes our custom Linux operating system i.e. [Jambula OS Linux](https://github.com/zikusooka/jambula-OS/) 
 

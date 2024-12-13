@@ -348,6 +348,9 @@ fi
 # Give HASS user permissions to install packages in Python virtual environment
 chown -R $HOME_ASSISTANT_USER $VENV_HOME_DIR
 
+# Remove HA_VERSION file if empty
+[[ -s ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION ]] || rm -f ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION
+
 # Use OEM directory if it exists
 if [[ -d "$HASS_ADDONS_DIR" ]];
 then
