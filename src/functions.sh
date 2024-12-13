@@ -185,7 +185,7 @@ python3_venv_create $HOME_ASSISTANT_PYTHON3_BINARY home-assistant-core-$HOME_ASS
 # Forcefully add pre-packaged dependencies that are required to install Home-Assistant on Arm64 boards
 # This is a temporary workaround as many aarch64 are still being built at this time
 PYTHON_VERS=$(python3 -V | awk '{print $2}' | cut -d '.' -f1-2 | sed 's:.::')
-if [[ "${MACHINE_ARCH}" = "aarch" ]];
+if [[ "${MACHINE_ARCH}" = "aarch64" ]];
 then
 for PACKAGE in \
 	ciso8601-2.3.0 \
