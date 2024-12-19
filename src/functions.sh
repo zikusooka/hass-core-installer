@@ -348,6 +348,17 @@ fi
 # Give HASS user permissions to install packages in Python virtual environment
 chown -R $HOME_ASSISTANT_USER $VENV_HOME_DIR
 
+# Give HASS user permissions to run CLI commands used by some system sensors
+[[ -d /etc/sudoers.d ]] || mkdir /etc/sudoers.d
+#
+cat > /etc/sudoers.d/${HOME_ASSISTANT_USER} <<ET
+Defaults:${HOME_ASSISTANT_USER}    !requiretty
+Cmnd_Alias SU_COMMANDS = /usr/bin/hostapd_cli
+${HOME_ASSISTANT_USER}	ALL = NOPASSWD: SU_COMMANDS
+ET
+# Change sudoer file permissions
+chmod 0440 /etc/sudoers.d/${HOME_ASSISTANT_USER}
+
 # Remove HA_VERSION file if empty
 [[ -s ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION ]] || rm -f ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION
 
