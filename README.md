@@ -62,7 +62,7 @@ Execute the following command to start the upgrade process:
 
     ```sudo ./INSTALL.sh [NEW-VERSION] [OLD-VERSION]```
     Example:
-    ```sudo ./INSTALL.sh  2024.12.0  2024.11.2```
+    ```sudo ./INSTALL.sh  2024.1.4  2024.12.0```
 
 Then wait a few minutes for upgrade program to complete!
 

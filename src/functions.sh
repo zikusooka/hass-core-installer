@@ -318,7 +318,7 @@ HOME_ASSISTANT_NEW_VERS_STRING="${HOME_ASSISTANT_NEW_VERS_STRING}"
 HOME_ASSISTANT_CMD="/usr/bin/hass-\${HOME_ASSISTANT_NEW_VERS_STRING}"
 HOME_ASSISTANT_CONFIG_DIR=/etc/homeassistant-\${HOME_ASSISTANT_NEW_VERS_STRING}
 HOME_ASSISTANT_USER=${HOME_ASSISTANT_USER}
-HOME_ASSISTANT_PATH="/srv/jambula/home-assistant-core-2024100/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/hass/.local/bin"
+HOME_ASSISTANT_PATH="${INSTALL_SRC_DIR}/jambula/home-assistant-core-\${HOME_ASSISTANT_NEW_VERS_STRING}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/hass/.local/bin"
 PATH=\${HOME_ASSISTANT_PATH}              
 ET
 
@@ -360,7 +360,7 @@ ET
 chmod 0440 /etc/sudoers.d/${HOME_ASSISTANT_USER}
 
 # Remove HA_VERSION file if empty
-[[ -s ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION ]] || rm -f ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION
+[[ -e ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION ]] && rm -f ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION
 
 # Use OEM directory if it exists
 if [[ -d "$HASS_ADDONS_DIR" ]];
