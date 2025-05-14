@@ -5,73 +5,118 @@ ping -c 1 -W 2 8.8.4.4 > /dev/null 2>&1
 INTERNET_ALIVE=$?
 }
 
-python3_module_local_download () {
-PYTHON_MODULE=$1
-PYTHON_PKG_FORMAT=$2
-PYTHON_PKG=$(echo $PYTHON_MODULE | cut -d'=' -f1)
-PYTHON_DOWNLOADS_DIR=$TMP_DIR/python3_deps.${PYTHON_MODULE}
+set_variables_4_python3_virtual_environment () {
+VENV_PACKAGE_NAME_VERSION=$1
+VENV_HOME_DIR=$PYTHON_VENV_ROOT_DIR/${VENV_PACKAGE_NAME_VERSION}
+VENV_BIN_DIR=$VENV_HOME_DIR/bin
+VENV_SITE_DIR=$VENV_HOME_DIR/lib/python$VENV_PYTHON_VERSION/site-packages
+PYTHON_DOWNLOADS_DIR=${PYTHON_ARCHIVES_DIR}
+PYTHON_CMD=$VENV_BIN_DIR/python3
+PIP3_CMD=$VENV_BIN_DIR/pip3
+UV_CMD=$VENV_BIN_DIR/uv
+#
+# Activate virtual environment
+[[ -x $VENV_HOME_DIR/bin/activate ]] && source $VENV_HOME_DIR/bin/activate
+}
 
-case $PYTHON_PKG_FORMAT in
+download_python_package_using_pip () {
+PYTHON_PACKAGE=$1
+PYTHON_PACKAGE_FORMAT=$2
+PYTHON_VENV_NAME=$3
+#
+# source variables for python3 virtual environment
+set_variables_4_python3_virtual_environment ${PYTHON_VENV_NAME}
+#
+case $PYTHON_PACKAGE_FORMAT in
 wheel)
-pip3 --disable-pip-version-check download --prefer-binary -d $PYTHON_DOWNLOADS_DIR $PYTHON_MODULE
+$PIP3_CMD --disable-pip-version-check download --prefer-binary -d $PYTHON_DOWNLOADS_DIR $PYTHON_PACKAGE
 ;;
 
 source)
-pip3 --disable-pip-version-check download --no-binary :all: --only-binary none -d $PYTHON_DOWNLOADS_DIR $PYTHON_MODULE
+$PIP3_CMD --disable-pip-version-check download --no-binary :all: --only-binary none -d $PYTHON_DOWNLOADS_DIR $PYTHON_PACKAGE
 ;;
 
 all|both)
-pip3 --disable-pip-version-check download --prefer-binary -d $PYTHON_DOWNLOADS_DIR $PYTHON_MODULE
-pip3 --disable-pip-version-check download --no-binary :all: --only-binary none -d $PYTHON_DOWNLOADS_DIR $PYTHON_MODULE
+$PIP3_CMD --disable-pip-version-check download --prefer-binary -d $PYTHON_DOWNLOADS_DIR $PYTHON_PACKAGE
+$PIP3_CMD --disable-pip-version-check download --no-binary :all: --only-binary none -d $PYTHON_DOWNLOADS_DIR $PYTHON_PACKAGE
 ;;
 
 *)
-pip3 --disable-pip-version-check download --prefer-binary -d $PYTHON_DOWNLOADS_DIR $PYTHON_MODULE
+$PIP3_CMD --disable-pip-version-check download --prefer-binary -d $PYTHON_DOWNLOADS_DIR $PYTHON_PACKAGE
 ;;
 esac
 }
 
-python3_module_local_install () {
-PYTHON_MODULE=$1
-# Remove pips cache directory - if left causes all sorts of issues
-[[ -d $HOME/.cache/pip ]] && rm -rf $HOME/.cache/pip
-# Install using locally stored package
-pip3 --log $BUILD_LOG install --no-cache-dir --upgrade --upgrade-strategy eager --no-index --find-links $PYTHON_ARCHIVES_DIR $PYTHON_MODULE
+install_python_package_using_name () {
+PYTHON_PACKAGE=$1
+PYTHON_VENV_NAME=$2
+#
+# source variables for python3 virtual environment
+set_variables_4_python3_virtual_environment ${PYTHON_VENV_NAME}
+#
+# Install locally stored package using specified package name
+${UV_CMD} pip install --no-cache-dir --upgrade --link-mode=copy --no-index \
+	--find-links $PYTHON_ARCHIVES_DIR ${PYTHON_PACKAGE} || \
+echo "Failed to install $PACKAGE" >> ${HASS_CORE_INSTALLER_LOG} 2>&1
 }
 
-python3_venv_destroy () {
+install_python_package_using_requirements () {
+PYTHON_REQUIREMENTS_FILE=$1
+PYTHON_VENV_NAME=$2
+#
+# source variables for python3 virtual environment
+set_variables_4_python3_virtual_environment ${PYTHON_VENV_NAME}
+#
+# Install locally stored packages using equirements file specified
+${UV_CMD} pip install --no-cache-dir --upgrade --link-mode=copy --no-index \
+	--find-links $PYTHON_ARCHIVES_DIR --requirements ${PYTHON_REQUIREMENTS_FILE} || \
+echo "Failed to install $PACKAGE" >> ${HASS_CORE_INSTALLER_LOG} 2>&1
+}
+
+install_requisite_package_4_venv () {
+# Install packages when Internet is available
+check_if_internet_is_up
+#
+if [[ "${INTERNET_ALIVE}" = "0" ]];
+then
+	$(which uv) pip install --no-cache-dir --upgrade --link-mode=copy $1
+else
+	$(which uv) pip install --no-cache-dir --upgrade --link-mode=copy --no-index \
+		--find-links $PYTHON_ARCHIVES_DIR $1
+fi
+}
+
+remove_python3_virtual_environment () {
 # Delete python3 virtual environment for [PACKAGE]
-# Usage: python3_venv_destroy [PACKAGE] [VERSION_STRING]
-#   e.g. python3_venv_destroy homeassistant 202173
+# Usage: remove_python3_virtual_environment [PACKAGE] [VERSION_STRING]
+#   e.g. remove_python3_virtual_environment homeassistant 202173
 VENV_PACKAGE=$1
 VENV_PACKAGE_VERSION_STRING=$2
 
 # Delete virtual environment
-if [[ "x$VENV_PACKAGE_VERSION_STRING" != "x" ]] && [[ -d $PYTHON3_VENV_ROOT_DIR/$VENV_PACKAGE-${VENV_PACKAGE_VERSION_STRING} ]];
+if [[ "x$VENV_PACKAGE_VERSION_STRING" != "x" ]] && [[ -d $PYTHON_VENV_ROOT_DIR/$VENV_PACKAGE-${VENV_PACKAGE_VERSION_STRING} ]];
 then
 echo "Destroying previous virtual environment [$VENV_PACKAGE-${VENV_PACKAGE_VERSION_STRING}], please be patient ..."
-rm -rf $PYTHON3_VENV_ROOT_DIR/$VENV_PACKAGE-${VENV_PACKAGE_VERSION_STRING}
-elif [[ -d $PYTHON3_VENV_ROOT_DIR/$VENV_PACKAGE ]];
+rm -rf $PYTHON_VENV_ROOT_DIR/$VENV_PACKAGE-${VENV_PACKAGE_VERSION_STRING}
+elif [[ -d $PYTHON_VENV_ROOT_DIR/$VENV_PACKAGE ]];
 then
 echo "Destroying previous virtual environment [$VENV_PACKAGE], please be patient ..."
-rm -rf $PYTHON3_VENV_ROOT_DIR/$VENV_PACKAGE
+rm -rf $PYTHON_VENV_ROOT_DIR/$VENV_PACKAGE
 else
 echo "No previous virtual installations found, proceeding ..." 
 fi
 }
 
-python3_venv_create () {
+create_python3_virtual_environment () {
 # Create python3 virtual environment for [PACKAGE]
-# Usage: python3_venv_create [PYTHON3_BINARY] [PACKAGE] [USER]
-#   e.g. python3_venv_create python3.8 homeassistant jambula
-VENV_PYTHON3_BINARY=$1
+# Usage: create_python3_virtual_environment [PYTHON_VERSION] [PACKAGE] [USER]
+#   e.g. create_python3_virtual_environment python3.13 homeassistant jambula
+VENV_PYTHON_VERSION=$1
 VENV_PACKAGE=$2
 VENV_USER=$3
-VENV_HOME_DIR=$PYTHON3_VENV_ROOT_DIR/$VENV_PACKAGE
-VENV_BIN_DIR=$VENV_HOME_DIR/bin
-VENV_SITE_DIR=$VENV_HOME_DIR/lib/$VENV_PYTHON3_BINARY/site-packages
-PYTHON3_CMD=$VENV_BIN_DIR/python3
-PIP3_CMD=$VENV_BIN_DIR/pip3
+#
+# source variables for python3 virtual environment
+set_variables_4_python3_virtual_environment ${VENV_PACKAGE}
 #
 # Create user if doesn't exist
 id $VENV_USER > /dev/null 2>&1
@@ -85,45 +130,40 @@ fi
 # Remove existing directory
 [[ -d $VENV_HOME_DIR ]] && rm -rf $VENV_HOME_DIR
 # Make virtual environment directory
-mkdir -p $VENV_HOME_DIR
-# Give user ownership of virtual environment directory
-chown -R $VENV_USER:$VENV_USER $VENV_HOME_DIR
+if [[ ! -d $PYTHON_VENV_ROOT_DIR ]];
+then
+mkdir -p $PYTHON_VENV_ROOT_DIR
+chown -R $VENV_USER:$VENV_USER $PYTHON_VENV_ROOT_DIR 
+fi
 #
 # Switch to virtual environment directory
-cd $VENV_HOME_DIR
+cd $PYTHON_VENV_ROOT_DIR
 #
 # Create virtual environment
 echo "Creating new virtual environment [$VENV_PACKAGE], please be patient ..."
-sudo -u $VENV_USER $(which $VENV_PYTHON3_BINARY) -m venv .
+sudo -u $VENV_USER $(which uv) venv --python $VENV_PYTHON_VERSION $PYTHON_VENV_ROOT_DIR/$VENV_PACKAGE
+#
 # Activate virtual environment
 echo "Activating virtual environment [$VENV_PACKAGE], please be patient ..."
-source bin/activate
-
-# Upgrade key packages for use in virtual environment
+source $VENV_BIN_DIR/activate
+#
+# Install pip3 for use in virtual environment
+install_requisite_package_4_venv pip
+#
+# Install other key packages for use in virtual environment: # uv, setuptools, wheels
 for PACKAGE in \
-pip \
+uv \
 setuptools \
 wheel
 do
-# Install packages when Internet is available
-check_if_internet_is_up
-#
-if [[ "${INTERNET_ALIVE}" = "0" ]];
-then
-	$PIP3_CMD install --prefer-binary --no-cache-dir --upgrade --upgrade-strategy only-if-needed $PACKAGE
-else
-	$PIP3_CMD install --prefer-binary --no-cache-dir --upgrade --upgrade-strategy only-if-needed --no-index --find-links $PYTHON_ARCHIVES_DIR $PACKAGE
-fi
+install_requisite_package_4_venv $PACKAGE
 done
-# Export virtual environment variables
-export VENV_BIN_DIR PYTHON3_CMD PIP3_CMD
 }
 
 
 # --------------------------
 # Uninstallation of packages
 # --------------------------
-
 uninstall_homeassistant_core () {
 HOME_ASSISTANT_OLD_VERS_STRING=$(echo $1 | sed "s/\.//g") 
 #
@@ -133,7 +173,7 @@ UNIT=home-assistant && \
 	killall hass > /dev/null 2>&1
 
 # Destroy python 3 virtual environment for home-assistant-core 
-python3_venv_destroy home-assistant-core $HOME_ASSISTANT_OLD_VERS_STRING
+remove_python3_virtual_environment home-assistant-core $HOME_ASSISTANT_OLD_VERS_STRING
 
 # Remove installation sources directory
 [[ -d $INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_OLD_VERS_STRING} ]] && \
@@ -158,160 +198,116 @@ deluser $HOME_ASSISTANT_USER > /dev/null 2>&1
 # ------------------------
 # Installation of packages
 # ------------------------
-
-homeassistant_core_install () {
-# Set the home-assistant core tag plus other variables to be used
-HOME_ASSISTANT_TAG="$1"
-HOME_ASSISTANT_PYTHON3_BINARY="$2"
-HOME_ASSISTANT_RELEASES_REPO="https://github.com/home-assistant/core/archive/refs/tags"
+extract_homeassistant_core_sources () {
 #
-# Set version string
-HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_TAG | sed "s/\.//g")
-export HOME_ASSISTANT_NEW_VERS_STRING
-#
-# Set python binary version
-if [[ "x$HOME_ASSISTANT_PYTHON3_BINARY" != "x" ]];
-then
-HOME_ASSISTANT_PYTHON3_BINARY=$HOME_ASSISTANT_PYTHON3_BINARY
-else
-HOME_ASSISTANT_PYTHON3_BINARY=$(python3 --version | rev | cut -d '.' -f2- | rev | sed 's: ::g' | tr '[:upper:]' '[:lower:]')
-fi
-
-HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE=$INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}/homeassistant/package_constraints.txt
-
-# Create python 3 virtual environment for home-assistant-core using python version specified above
-python3_venv_create $HOME_ASSISTANT_PYTHON3_BINARY home-assistant-core-$HOME_ASSISTANT_NEW_VERS_STRING jambula
-
-# Forcefully add pre-packaged dependencies that are required to install Home-Assistant on Arm64 boards
-# This is a temporary workaround as many aarch64 are still being built at this time
-PYTHON_VERS=$(python3 -V | awk '{print $2}' | cut -d '.' -f1-2 | sed 's:\.::')
-if [[ "${MACHINE_ARCH}" = "aarch64" ]];
-then
-for PACKAGE in \
-	ciso8601-2.3.0 \
-	netifaces-0.11.0
-do
-if [[ -e "$PYTHON_ARCHIVES_DIR/${PACKAGE}-python${PYTHON_VERS}-aarch64.tar.bz2" ]];
-then
-	tar jxvf $PYTHON_ARCHIVES_DIR/${PACKAGE}-python${PYTHON_VERS}-aarch64.tar.bz2 \
-		-C $PYTHON3_VENV_ROOT_DIR/home-assistant-core-$HOME_ASSISTANT_NEW_VERS_STRING/
-else
-	echo "Warning: The package ${PACKAGE}-python${PYTHON_VERS}-aarch64.tar.bz2 was not found, please download
-	it manually and place it under the directory: $PYTHON_ARCHIVES_DIR/"
-fi
-done
-#
-#
-# Packages that fail to build wheels
-for PACKAGE in pyspeex-noise
-do
-	$PIP3_CMD install --prefer-binary --no-cache-dir --upgrade \
-		--upgrade-strategy only-if-needed --no-index \
-		--find-links $PYTHON_ARCHIVES_DIR ${PACKAGE} || \
-		echo "Warning: Failed to install ${PACKAGE}"
-done
-fi
-
-# Notice: Installing home-assistant-core [version]
-clear
-cat <<ET
-
-Starting installation of Home Assistant Core [${HOME_ASSISTANT_TAG}], please be patient ...
-
-ET
-sleep 5
-
-# Check for Internet connectivity
 check_if_internet_is_up
 #
-# Prepare home-assistant-core sources
-if [[ -f "${SRC_DIR}/core-${HOME_ASSISTANT_TAG}.tar.gz" ]]
-then
-	# Unpack archive of Home-Assistant Core locally
-	cd ${INSTALL_SRC_DIR} && tar zxvf ${SRC_DIR}/core-${HOME_ASSISTANT_TAG}.tar.gz \
-		--one-top-level=home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING} \
-		--strip-components=1 
-
-elif [[ "${INTERNET_ALIVE}" = "0" ]];
+if [[ "${INTERNET_ALIVE}" = "0" ]];
 then
 	# Fetch archive of Home-Assistant Core from upstream
 	[[ -s ${TMP_DIR}/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}.tar.gz ]] || \
-		wget --no-check-certificate -c -O ${TMP_DIR}/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}.tar.gz ${HOME_ASSISTANT_RELEASES_REPO}/${HOME_ASSISTANT_TAG}.tar.gz 
+		wget --no-check-certificate -c -O ${TMP_DIR}/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}.tar.gz ${HOME_ASSISTANT_RELEASES_REPO}/${HOME_ASSISTANT_NEW_VERSION}.tar.gz 
 	# Unpack archive of Home-Assistant Core locally
 	cd ${INSTALL_SRC_DIR} && tar zxvf ${TMP_DIR}/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}.tar.gz \
 		--one-top-level=home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING} \
 		--strip-components=1 
-
-elif [[ "${INTERNET_ALIVE}" != "0" ]];
+elif [[ "${INTERNET_ALIVE}" != "0" ]] && [[ -f "${SRC_DIR}/core-${HOME_ASSISTANT_NEW_VERSION}.tar.gz" ]];
 then
-	echo "Installation of Home-Assistant-Core failed. Unable to not connect to the Internet and package the archive [core-${HOME_ASSISTANT_NEW_VERS_STRING}.tar.gz"
+	echo "Warning: Unable to not connect to the Internet using pre-packaged archive [core-${HOME_ASSISTANT_NEW_VERS_STRING}.tar.gz"
 
+	# Unpack archive of Home-Assistant Core locally
+	cd ${INSTALL_SRC_DIR} && tar zxvf ${SRC_DIR}/core-${HOME_ASSISTANT_NEW_VERSION}.tar.gz \
+		--one-top-level=home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING} \
+		--strip-components=1
 else
 	echo "Installation of Home-Assistant-Core failed.  The archive [core-${HOME_ASSISTANT_NEW_VERS_STRING}.tar.gz] is not available"
 exit 1
 fi
+}
 
-# Update pyproject.toml file
-sed -i "s:ciso8601==2.3.1:ciso8601==2.3.0:g" $INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}/pyproject.toml
-
-# Change to sources directory
-cd $INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+install_pre_packaged_hass_core_dependencies () {
+# Forcefully add pre-packaged dependencies that are required to install Home-Assistant on Arm64 boards
+# NOTE: This is a temporary workaround as many aarch64 based packages are still being built at this time
 #
-# Build translation files
-$PYTHON3_CMD -m script.translations develop --all
-
-# Install source files based on Internet availability
-if [[ "${INTERNET_ALIVE}" = "0" ]];
+PRE_PACKAGED_DEPS_FILE=${PYTHON_DIR}/requirements-pre-packaged.txt
+#
+if [[ "${MACHINE_ARCH}" = "aarch64" ]];
 then
-	# Install dependencies needed by Home-Assistant during installation if Internet is active
-	grep -v -e "^#" -e 1000000000 ${HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE} | sed "/^$/d" | \
+	grep -v -e "^#" -e 1000000000 ${PRE_PACKAGED_DEPS_FILE} | sed "/^$/d" | \
 		while read PACKAGE;
 		do
-			# Download package and save it in archive directory
-			$PIP3_CMD download --prefer-binary -d ${PYTHON_ARCHIVES_DIR} ${PACKAGE}
-			# 
-			# Install package from archives directory
-			$PIP3_CMD install --prefer-binary --no-cache-dir --upgrade \
-				--upgrade-strategy only-if-needed \
-				--find-links $PYTHON_ARCHIVES_DIR ${PACKAGE} || \
-				echo "Warning: Failed to install $PACKAGE"
+			# Install pre-packaged package using local archive
+			install_python_package_using_name ${PACKAGE} home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
 		done
-
-	# Install Home-Assistant Core when Internet is available
-	$PIP3_CMD install --prefer-binary --no-cache-dir --upgrade --upgrade-strategy only-if-needed \
-		--find-links $PYTHON_ARCHIVES_DIR .
-
-	# Install other packages needed after install and when running Home-Assistant - Internet is avaialable
-	[[ -e $HASS_INSTALL_REQUIREMENTS_FILE ]] && $PIP3_CMD install --prefer-binary --no-cache-dir \
-		--upgrade --upgrade-strategy only-if-needed -r $HASS_INSTALL_REQUIREMENTS_FILE
-
-else
-	# Install dependencies needed by Home-Assistant during installation there's NO if Internet
-	grep -v -e "^#" -e 1000000000 ${HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE} | sed "/^$/d" | \
-		while read PACKAGE;
-		do
-		$PIP3_CMD install --prefer-binary --no-cache-dir --upgrade \
-			--upgrade-strategy only-if-needed --no-index \
-			--find-links $PYTHON_ARCHIVES_DIR ${PACKAGE} || \
-			echo "Warning: Failed to install ${PACKAGE}"
-		done 
-
-	# Install Home-Assistant Core when Internet is NOT available
-	$PIP3_CMD install --prefer-binary --no-cache-dir --upgrade --upgrade-strategy only-if-needed \
-		--no-index --find-links $PYTHON_ARCHIVES_DIR .
-
-	# Install other packages needed after install and when running Home-Assistant - Internet NOT avaialable
-	[[ -e $HASS_INSTALL_REQUIREMENTS_FILE ]] && $PIP3_CMD install --prefer-binary --no-cache-dir \
-		--upgrade --upgrade-strategy only-if-needed --no-index --find-links $PYTHON_ARCHIVES_DIR \
-		-r $HASS_INSTALL_REQUIREMENTS_FILE
 fi
+}
 
+revice_versions_on_problematic_hass_core_dependencies () {
+HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_NEW_VERSION | sed "s/\.//g")
+HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE=$INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}/homeassistant/package_constraints.txt
+}
+
+install_hass_core_dependencies_internet_on () {
+HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_NEW_VERSION | sed "s/\.//g")
+HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE=$INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}/homeassistant/package_constraints.txt
+#
+# Install dependencies needed by Home-Assistant during installation if Internet is active
+grep -v -e "^#" -e 1000000000 ${HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE} | sed "/^$/d" | \
+	while read PACKAGE;
+	do
+		# Download package and save it in archive directory
+		download_python_package_using_pip ${PACKAGE} all home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+		# Install package using local archive
+		install_python_package_using_name ${PACKAGE} home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+	done
+}
+
+install_hass_core_dependencies_internet_off () {
+HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_NEW_VERSION | sed "s/\.//g")
+HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE=$INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}/homeassistant/package_constraints.txt
+#
+# Install dependencies needed by Home-Assistant during installation there's NO if Internet
+grep -v -e "^#" -e 1000000000 ${HOME_ASSISTANT_INSTALL_PKG_CONSTRAINTS_FILE} | sed "/^$/d" | \
+	while read PACKAGE;
+	do
+	# Install package from archives directory
+		install_python_package_using_name ${PACKAGE} home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING} || \
+		echo "Warning: Failed to install $PACKAGE" >> ${HASS_CORE_INSTALLER_LOG} 2>&1
+	done
+}
+
+install_hass_core_required_packages () {
+HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_NEW_VERSION | sed "s/\.//g")
+HOME_ASSISTANT_INSTALL_ALL_REQUIREMENTS_FILE=$INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}/requirements_all.txt
+#
+grep -v -e "^#" -e 1000000000 ${HASS_INSTALL_REQUIREMENTS_FILE} | sed "/^$/d" | cut -d '=' -f1 | \
+	while read REQUIRED_PACKAGE;
+	do
+		# Install required homeassistant core packages based on Internet availability
+		if [[ "${INTERNET_ALIVE}" = "0" ]];
+		then
+			PACKAGE=$(awk "/${REQUIRED_PACKAGE}/ {print \$1}" ${HOME_ASSISTANT_INSTALL_ALL_REQUIREMENTS_FILE} | grep -v -e "^#" -e 1000000000)
+			# Download package and save it in archive directory
+			download_python_package_using_pip ${PACKAGE} all home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+			# Install package using local archive
+			echo "Installing $PACKAGE"
+			install_python_package_using_name ${PACKAGE} home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+		else
+			# Install package using local archive
+			PACKAGE=$(awk "/${REQUIRED_PACKAGE}/ {print \$1}" ${HOME_ASSISTANT_INSTALL_ALL_REQUIREMENTS_FILE} | grep -v -e "^#" -e 1000000000)
+			install_python_package_using_name ${PACKAGE} home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+		fi
+	done
+}
+
+homeassistant_core_post_install_cmds () {
+HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_NEW_VERSION | sed "s/\.//g")
 # Create symbolic links
 [[ -x /usr/bin/hass-${HOME_ASSISTANT_NEW_VERS_STRING} ]] || \
 	ln -s $VENV_BIN_DIR/hass /usr/bin/hass-${HOME_ASSISTANT_NEW_VERS_STRING}
 [[ -x /usr/bin/hass-${HOME_ASSISTANT_NEW_VERS_STRING} ]] && \
 	ln -s -f /usr/bin/hass-${HOME_ASSISTANT_NEW_VERS_STRING} /usr/bin/hass
-
+#
 # Create environment variables file for home-assistant-core
 cat > $SYSCONFIG_DIR/home-assistant-core <<ET
 HOME_ASSISTANT_NEW_VERS_STRING="${HOME_ASSISTANT_NEW_VERS_STRING}"
@@ -321,10 +317,69 @@ HOME_ASSISTANT_USER=${HOME_ASSISTANT_USER}
 HOME_ASSISTANT_PATH="${INSTALL_SRC_DIR}/jambula/home-assistant-core-\${HOME_ASSISTANT_NEW_VERS_STRING}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/hass/.local/bin"
 PATH=\${HOME_ASSISTANT_PATH}              
 ET
-
+#
 # Remove sources in install directory to save on space
 [[ -d $INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING} ]] && \
 	rm -rf $INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+}
+
+homeassistant_core_install () {
+HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_NEW_VERSION | sed "s/\.//g")
+HOME_ASSISTANT_PYTHON_VENV="home-assistant-core-$HOME_ASSISTANT_NEW_VERS_STRING"
+#
+# source variables for python3 virtual environment
+set_variables_4_python3_virtual_environment ${HOME_ASSISTANT_PYTHON_VENV}
+#
+# Create python 3 virtual environment for home-assistant-core using python version requested
+create_python3_virtual_environment ${PYTHON_VERSION} ${HOME_ASSISTANT_PYTHON_VENV} jambula
+#
+# Prepare home-assistant-core sources
+extract_homeassistant_core_sources
+#
+# Revise version for some problematic packages in requirements constraints file
+revice_versions_on_problematic_hass_core_dependencies
+
+# Change to sources directory
+cd $INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+#
+# Build translation files
+$PYTHON_CMD -m script.translations develop --all
+#
+# Forcefully add pre-packaged dependencies that are required to install Home-Assistant on Arm64 boards
+install_pre_packaged_hass_core_dependencies
+#
+# Install source files based on Internet availability
+if [[ "${INTERNET_ALIVE}" = "0" ]];
+then
+	# Install homeassistant when Internet is available
+	install_hass_core_dependencies_internet_on
+else
+	# Install homeassistant when Internet is NOT available
+	install_hass_core_dependencies_internet_off
+fi
+# 
+# Install Home Assistant Core
+clear
+cat <<ET
+
+Installing Home Assistant Core [${HOME_ASSISTANT_NEW_VERSION}], please be patient ...
+
+ET
+install_python_package_using_name "." \
+	home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+#
+# Install other packages required during Home-Assistant runtime
+cat <<ET
+
+
+Installing Other runtime requirements needed for Home Assistant Core [${HOME_ASSISTANT_NEW_VERSION}], please be patient ...
+------
+
+ET
+install_hass_core_required_packages
+#
+# Post installation setup
+homeassistant_core_post_install_cmds
 }
 
 homeassistant_core_configure () {
@@ -344,10 +399,10 @@ then
 else
 	useradd -c "Home Assistant User" -G dialout -d /home/${HOME_ASSISTANT_USER} -m $HOME_ASSISTANT_USER 
 fi
-
+#
 # Give HASS user permissions to install packages in Python virtual environment
 chown -R $HOME_ASSISTANT_USER $VENV_HOME_DIR
-
+#
 # Give HASS user permissions to run CLI commands used by some system sensors
 [[ -d /etc/sudoers.d ]] || mkdir /etc/sudoers.d
 #
@@ -358,7 +413,7 @@ ${HOME_ASSISTANT_USER}	ALL = NOPASSWD: SU_COMMANDS
 ET
 # Change sudoer file permissions
 chmod 0440 /etc/sudoers.d/${HOME_ASSISTANT_USER}
-
+#
 # Remove HA_VERSION file if empty
 [[ -e ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION ]] && rm -f ${HOME_ASSISTANT_CONFIG_DIR}/.HA_VERSION
 
@@ -375,7 +430,7 @@ do
 [[ -d ${JAMBULA_STORAGE_DIR}/${DIRECTORY} ]] && \
 	chown -R $HOME_ASSISTANT_USER:$HOME_ASSISTANT_USER ${JAMBULA_STORAGE_DIR}/${DIRECTORY}
 done
-
+#
 # Copy homeassistant configuration files
 [[ -d $HASS_ADDONS_DIR/config/homeassistant ]] && \
 	cd ${TMP_DIR} && rsync -av $HASS_ADDONS_DIR/config/homeassistant/ $HOME_ASSISTANT_CONFIG_DIR/
@@ -384,13 +439,13 @@ done
 cp -v $HASS_ADDONS_DIR/udev/90-jambula-usb-zwave.rules /etc/udev/rules.d
 # Reload udev
 /usr/bin/udevadm control --reload && udevadm trigger --action=add
-
+#
 # Copy jambulatv-homeassistant-secrets script, if it does not exist in bin directory
 [ -e $HASS_ADDONS_DIR/bin/jambula-homeassistant-secrets ] && \
 	cp -v $HASS_ADDONS_DIR/bin/jambula-homeassistant-secrets /usr/bin/
 # Make script executable
 chmod 755 /usr/bin/jambula-homeassistant-secrets
-
+#
 # Copy homeassistant sound files
 cd ${TMP_DIR} && rsync -av ${HASS_ADDONS_DIR}/sounds/ $JAMBULA_SOUNDS_DIR/homeassistant/
 # Change ownership of sounds directory
@@ -415,7 +470,6 @@ chown -R $HOME_ASSISTANT_USER:$HOME_ASSISTANT_USER $JAMBULA_SOUNDS_DIR/homeassis
 		# Enable and start zwave-js-server if needed
 		systemctl enable --now zwave-js-server.service 
 	fi
-
 else
 # -----------------------------------------------------------------------------------
 # Home-Assistant configuration for Others
@@ -426,7 +480,7 @@ else
 # Create homeassistant configuration directory if not existent
 [[ -d $CONFIG_DIR/homeassistant ]] || mkdir -p $HOME_ASSISTANT_CONFIG_DIR
 fi
-
+#
 # Create symbolic link to HASS config directory - needed by some tools that don't know about version info
 ln -s -f $HOME_ASSISTANT_CONFIG_DIR /etc/homeassistant
 
@@ -434,9 +488,7 @@ ln -s -f $HOME_ASSISTANT_CONFIG_DIR /etc/homeassistant
 [[ -s $HOME_ASSISTANT_CONFIG_DIR ]] && \
 	chown -R $HOME_ASSISTANT_USER:$HOME_ASSISTANT_USER $HOME_ASSISTANT_CONFIG_DIR
 
-
 # TODO: Customize Home-Assistant i.e. secrets etc.....
-
 
 # Copy home-assistant systemd file 
 cat $SYSTEMD_DIR/home-assistant.service | \
@@ -444,4 +496,81 @@ cat $SYSTEMD_DIR/home-assistant.service | \
 	> /etc/systemd/system/home-assistant.service
 # Enable and start home-assistant if needed
 systemctl enable --now home-assistant.service
+}
+
+run_homeassistant_core_tests () {
+HOME_ASSISTANT_NEW_VERS_STRING=$(echo $HOME_ASSISTANT_NEW_VERSION | sed "s/\.//g") 
+HOME_ASSISTANT_CONFIG_DIR=/etc/homeassistant-${HOME_ASSISTANT_NEW_VERS_STRING}
+#
+# Tests
+$(which hass) --version > /dev/null 2>&1
+HASS_INSTALLED=$?
+# Wait for hass to start
+echo "Waiting for Home Assistant to be fully initiated and running, please wait ...."
+sleep 15
+$(which lsof) -t -i:8123 > /dev/null 2>&1
+HASS_STARTED=$?
+[[ -e ${HASS_CORE_INSTALLER_LOG} ]] && \
+	awk '/Failed to Install/ {print $4}' ${HASS_CORE_INSTALLER_LOG}
+HASS_PACKAGE_DEP_MISSING=$?
+[[ -e ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log ]] && \
+	awk '/Unable to install/ {print $10}' ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log | cut -d ':' -f1 | sort -u > /dev/null 2>&1
+HASS_PACKAGE_CORE_MISSING=$?
+#
+if [[ "${HASS_INSTALLED}" = "0" && "${HASS_STARTED}" = "0" ]];
+then
+clear
+cat <<ET
+
+#####################################################################
+#                                                                   #
+#  Congratulations, completed install and setup of home assistant!  #
+#                                                                   #
+#  To begin creating your smart home, point your browser to:        #
+#                                                                   #
+#  http://${HOME_ASSISTANT_SERVER_IP}:${HOME_ASSISTANT_SERVER_PORT}
+#                                                                   #   
+# NOTE: If you want Home Assistant to always start at boot time,    #
+#       run the following command:                                  #
+#                                                                   #
+#       systemctl enable home-assistant.service                     #
+#                                                                   #
+#####################################################################
+ET
+#
+elif [[ "${HASS_INSTALLED}" = "0" && "${HASS_STARTED}" != "0" ]];
+then
+clear
+cat <<ET
+
+#####################################################################
+  Error:  Home Assistant Core installed but failed to start!
+#####################################################################
+
+Please check the following log file(s) to determine what went wrong:
+
+${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log
+
+ET
+exit 255
+fi
+
+# Warn if there are uninstalled packages
+if [[ "${HASS_INSTALLED}" = "0" ]] && \
+	[[ "${HASS_PACKAGE_DEP_MISSING}" = "0" || "${HASS_PACKAGE_CORE_MISSING}" = "0" ]];
+then
+cat <<ET
+
+################################################################################
+  Warning:  Installation of some required Home Assistant Core packages Failed!
+################################################################################
+
+Please install the following packages before restarting Home Assistant Core:
+ET
+#
+[[ -e ${HASS_CORE_INSTALLER_LOG} ]] && \
+	awk '/Failed to install/ {print $4}' ${HASS_CORE_INSTALLER_LOG} | sed '/^$/d'
+[[ -e ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log ]] && \
+	awk '/Unable to install/ {print $10}' ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log | cut -d ':' -f1 | sort -u
+fi
 }

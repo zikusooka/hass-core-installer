@@ -1,96 +1,169 @@
 ![HASS Core Installer](images/banner.png "HASS Core Installer")
+
 # HASS Core Installer
 
-## About 
+## About
 
-HASS Core Installer is a simple tool used to install, upgrade, and uninstall Home Assistant Core using a 
-Python virtual environment on Linux. It can also be installed on Arm-64 bit devices such as the 
-Raspberry Pi 5.
-  
-I created it to suppliment the [Official methods](https://www.home-assistant.io/installation/) of installing Home Assistant which are mainly aimed at beginners and non-advanced Linux users. Yet, while those methods offer an easy and quick way to install HASS and get going, they do not offer the flexibility, especially when it comes to 
-upgrading to the new and latest versions of Home Assistant.
+HASS Core Installer is a streamlined tool for installing, upgrading, and uninstalling Home Assistant Core in a Python virtual environment on Linux systems, including ARM64 devices like the Raspberry Pi 5.
 
-HASS Core Installer is mainly used by our company i.e. Jambula Labs to quickly install and upgrade Home Assistant to the latest  releases on Linux.  This includes our custom Linux operating system i.e. [Jambula OS Linux](https://github.com/zikusooka/jambula-OS/) 
+This tool was created in response to the [deprecation of official support for the Home Assistant Core and Supervised installation methods](https://community.home-assistant.io/t/feedback-requested-deprecating-core-supervised-i386-armhf-armv7/880968), as well as the discontinuation of support for certain legacy architectures (i386, armhf, armv7)[4][5]. While Home Assistant OS and Container remain officially supported, many advanced users, developers, and those with unique hardware needs still prefer the flexibility and transparency of Core installations. HASS Core Installer is designed to fill this gap, enabling continued use and development on platforms and in scenarios that official methods no longer support.
 
-HASS Core Installer also supports offline installs, upgrades, and uninstalls of Home Assistant Core.  Please note that in order for 
-this to work, you must have pre-downloaded all the required python package dependencies and saved them in the 
-python/archives directory
+HASS Core Installer is actively used at Jambula Labs for rapid deployment and upgrades of Home Assistant Core on custom Linux distributions, such as [Jambula OS Linux](https://github.com/zikusooka/jambula-OS/).
 
-In case you don't know what it is, Home Assistant is an open-source home automation platform that focuses on 
-privacy and local control. It is designed to be the central hub for managing and automating your smart home 
-devices. Home Assistant integrates with a wide range of devices and services, allowing you to control your 
-home environment from a single interface. It offers powerful automation features, notifications, and voice 
-control, all while keeping your data private and secure.  You can read more about Home Assistant at:
-https://home-assistant.io/
+It also supports fully offline installs, upgrades, and uninstalls-provided you have pre-downloaded all required Python package dependencies into the `python/archives` directory.
+
+> Home Assistant is an open-source home automation platform focused on privacy and local control. It serves as a central hub for managing and automating smart home devices, offering integration with a wide range of hardware and services. For more information, visit [home-assistant.io](https://home-assistant.io/).
+
+---
+
+## Why Choose This Installation Type?
+
+**Justification for using this Home Assistant installation type:**
+
+- No longer officially supported, but still viable for advanced users
+- Enables offline support, especially for ARM64 platforms
+- Allows upgrades between any versions, not limited by official channels
+- Provides full control and transparency over the Home Assistant environment
+- Lightweight footprint compared to supervised or OS-based methods
+- Supports custom Python packages and dependencies
+- Integrates seamlessly with system services (e.g., systemd)
+- Independence from upstream changes and release cycles
+- Ideal for development and custom component testing
+
+---
+
+**Best Use Cases:**
+
+- Developers contributing to Home Assistant or building custom components
+- Power users with advanced Linux experience
+- Security-focused deployments requiring minimal surface area
+- Systems without Docker support (e.g., non-Linux or niche environments)
+- Environments where official installation methods are not viable due to hardware or policy constraints
+
+---
+
+## 🧱 System Dependencies
 
 
-## Dependencies
+### ▶️ OpenSUSE
+sudo zypper install -y \
+  python3 python3-pip python3-virtualenv \
+  gcc gcc-c++ make \
+  libffi-devel libopenssl-devel \
+  zlib-devel bzip2-devel readline-devel \
+  sqlite3-devel ncurses-devel libxml2-devel \
+  libxslt-devel xz-devel bluez-devel \
+  systemd-devel glib2-devel \
+  avahi-devel avahi-tools uv
 
-1. Python version 3.12+
-   Check your version using the command: ```python3 -V```
+### ▶️ Fedora / Redhat
 
-2. python3-dev, python3-pip, ensurepip, libturbojpeg
+sudo dnf install -y \
+  python3 python3-virtualenv python3-pip \
+  gcc gcc-c++ make \
+  libffi-devel openssl-devel \
+  zlib-devel bzip2-devel readline-devel \
+  sqlite-devel ncurses-devel libxml2-devel \
+  libxslt-devel xz-devel bluez-libs-devel \
+  systemd-devel glib2-devel \
+  avahi avahi-libs avahi-tools avahi-glib avahi-compat-libdns_sda uv
 
-   On Debian/Ubuntu: ```apt install python3.12-venv python3-dev python3-pip libturbojpeg```
+### ▶️ Debian / Ubuntu
 
-   On Fedora/RedHat: ```dnf install python3-virtualenv python3-devel python3-pip turbojpeg-devel```
+```bash
+sudo apt update
+sudo apt install -y \
+  python3 python3-venv python3-pip \
+  build-essential libffi-dev libssl-dev \
+  libjpeg-dev zlib1g-dev libbz2-dev libreadline-dev \
+  libsqlite3-dev libncursesw5-dev libxml2-dev \
+  libxmlsec1-dev libxslt1-dev liblzma-dev \
+  bluez libudev-dev avahi-daemon libavahi-client-dev \
+  dbus systemd libglib2.0-dev uv
 
+---
 
 ![HASS Core Installer](images/console.png "HASS Core Installer")
 
+---
 
 ## Installation
 
-NOTE:  If you are using Jambula OS, you do not need to use this tool as it is already integrated with the OS images
-       Simply run the setup tool which has an option to install Home Assistant Core
+> **Note:** If you are using Jambula OS, this tool is already integrated. Simply run the setup tool included with the OS.
 
-Open a terminal and navigate to the directory where this tool was cloned to. 
-Execute the following command to start the installation process:
-<b>IMPORTANT:  Make sure you are connected to the Internet </b>
+To install on other systems:
 
-    ```sudo ./INSTALL.sh```
+1. Open a terminal and navigate to the directory where this tool was cloned.
+2. Run:
 
-Then wait a few minutes for install program to complete!
+    ```bash
+    sudo ./INSTALL.sh
+    ```
 
+3. Wait for the installation to complete.
+
+**Tip:** To use a specific Python version in the virtual environment:
+
+```bash
+sudo ./INSTALL.sh "" "" [PYTHON-VERSION]
+```
+
+---
 
 ## Upgrade
 
-Open a terminal and navigate to the directory where this tool was cloned to. 
-Execute the following command to start the upgrade process:
-<b>IMPORTANT:  Make sure you are connected to the Internet </b>
+To upgrade Home Assistant Core:
 
+1. Open a terminal and navigate to the directory where this tool was cloned.
+2. Run:
 
-    ```sudo ./INSTALL.sh [NEW-VERSION] [OLD-VERSION]```
+    ```bash
+    sudo ./INSTALL.sh [NEW-VERSION] [OLD-VERSION]
+    ```
     Example:
-    ```sudo ./INSTALL.sh  2024.1.4  2024.12.0```
+    ```bash
+    sudo ./INSTALL.sh 2025.5.0 2025.4.4
+    ```
 
-Then wait a few minutes for upgrade program to complete!
+3. Wait for the upgrade to complete.
 
+**Tip:** To specify a Python version during upgrade:
 
-## Configure Home Assistant ##
+```bash
+sudo ./INSTALL.sh [NEW-VERSION] [OLD-VERSION] [PYTHON-VERSION]
+```
+Example:
+```bash
+sudo ./INSTALL.sh 2025.5.0 2025.4.4 3.13.x
+```
 
-After installation or upgrade, you may need to configure Home Assistant to connect with your devices and set up automations. 
-Refer to the [official documentation](https://www.home-assistant.io/docs/) for detailed setup and configuration instructions.
-<b>HINT: Look in the scripts directory for some of our helper setup tools</b>
+---
 
+## Configure Home Assistant
 
-## Getting Started with Home Assistant
+After installation or upgrade, configure Home Assistant to connect with your devices and set up automations. Refer to the [official documentation](https://www.home-assistant.io/docs/) for detailed setup instructions.
 
-Once installed, you can access the Home Assistant web interface by navigating to `http://localhost:8123` in your web browser. From there, you can start configuring your smart home devices and creating automations.
+> **Hint:** Check the `scripts` directory for helper setup tools.
 
-Enjoy!
+---
 
-Don't forget to thank the developers at Home Assistant project for the great work.  
-For HASS support visit: [Home Assistant Community Forum](https://community.home-assistant.io/) 
+## Getting Started
 
+Once installed, access the Home Assistant web interface at `http://localhost:8123` in your browser. Begin configuring your smart home devices and automations.
+
+---
+
+## Support and Community
+
+- For Home Assistant support, visit the [Home Assistant Community Forum](https://community.home-assistant.io/).
+- Please consider supporting ongoing development-see the FUNDING file or contact joseph AT zikusooka.com.
+
+---
 
 ## TO DO
 
 None
 
+---
 
-## Support
-
-   Your financial support can help sustain and improve this and other tools I have created.  
-   Please consider contributing to my projects!  Check out the FUNDING file for details or contact me direct via 
-   email using: joseph AT zikusooka.com
+Enjoy using HASS Core Installer and remember thank the Home Assistant developers for their outstanding work!
