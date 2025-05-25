@@ -55,9 +55,12 @@ PYTHON_VENV_NAME=$2
 set_variables_4_python3_virtual_environment ${PYTHON_VENV_NAME}
 #
 # Install locally stored package using specified package name
-${UV_CMD} pip install --no-cache-dir --upgrade --link-mode=copy --no-index \
-	--find-links $PYTHON_ARCHIVES_DIR ${PYTHON_PACKAGE} || \
-echo "Failed to install $PACKAGE" >> ${HASS_CORE_INSTALLER_LOG} 2>&1
+if [[ ! -z "${PYTHON_PACKAGE}" ]];
+then
+	${UV_CMD} pip install --no-cache-dir --force-reinstall --link-mode=copy \
+	--no-index --find-links $PYTHON_ARCHIVES_DIR ${PYTHON_PACKAGE} || \
+echo "Failed to install ${PYTHON_PACKAGE}" >> ${HASS_CORE_INSTALLER_LOG} 2>&1
+fi
 }
 
 install_python_package_using_requirements () {
@@ -286,16 +289,17 @@ grep -v -e "^#" -e 1000000000 ${HASS_INSTALL_REQUIREMENTS_FILE} | sed "/^$/d" | 
 		# Install required homeassistant core packages based on Internet availability
 		if [[ "${INTERNET_ALIVE}" = "0" ]];
 		then
-			PACKAGE=$(awk "/${REQUIRED_PACKAGE}/ {print \$1}" ${HOME_ASSISTANT_INSTALL_ALL_REQUIREMENTS_FILE} | grep -v -e "^#" -e 1000000000)
+			PACKAGE=$(grep "\b${REQUIRED_PACKAGE}\b" ${HOME_ASSISTANT_INSTALL_ALL_REQUIREMENTS_FILE} | grep -v -e "^#" -e 1000000000)
 			# Download package and save it in archive directory
-			download_python_package_using_pip ${PACKAGE} all home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+			download_python_package_using_pip "${PACKAGE}" all home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
 			# Install package using local archive
-			echo "Installing $PACKAGE"
-			install_python_package_using_name ${PACKAGE} home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+			[[ ! -z ${PACKAGE} ]] && echo "Installing [${PACKAGE}]" && \
+			install_python_package_using_name "${PACKAGE}" home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
 		else
 			# Install package using local archive
-			PACKAGE=$(awk "/${REQUIRED_PACKAGE}/ {print \$1}" ${HOME_ASSISTANT_INSTALL_ALL_REQUIREMENTS_FILE} | grep -v -e "^#" -e 1000000000)
-			install_python_package_using_name ${PACKAGE} home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
+			PACKAGE=$(grep "\b${REQUIRED_PACKAGE}\b" ${HOME_ASSISTANT_INSTALL_ALL_REQUIREMENTS_FILE} | grep -v -e "^#" -e 1000000000)
+			[[ ! -z ${PACKAGE} ]] && echo "Installing [${PACKAGE}]" && \
+			install_python_package_using_name "${PACKAGE}" home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
 		fi
 	done
 }
@@ -513,9 +517,6 @@ HASS_STARTED=$?
 [[ -e ${HASS_CORE_INSTALLER_LOG} ]] && \
 	awk '/Failed to Install/ {print $4}' ${HASS_CORE_INSTALLER_LOG}
 HASS_PACKAGE_DEP_MISSING=$?
-[[ -e ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log ]] && \
-	awk '/Unable to install/ {print $10}' ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log | cut -d ':' -f1 | sort -u > /dev/null 2>&1
-HASS_PACKAGE_CORE_MISSING=$?
 #
 if [[ "${HASS_INSTALLED}" = "0" && "${HASS_STARTED}" = "0" ]];
 then
@@ -556,8 +557,7 @@ exit 255
 fi
 
 # Warn if there are uninstalled packages
-if [[ "${HASS_INSTALLED}" = "0" ]] && \
-	[[ "${HASS_PACKAGE_DEP_MISSING}" = "0" || "${HASS_PACKAGE_CORE_MISSING}" = "0" ]];
+if [[ "${HASS_INSTALLED}" = "0" && "${HASS_PACKAGE_DEP_MISSING}" = "0" ]];
 then
 cat <<ET
 
@@ -570,7 +570,7 @@ ET
 #
 [[ -e ${HASS_CORE_INSTALLER_LOG} ]] && \
 	awk '/Failed to install/ {print $4}' ${HASS_CORE_INSTALLER_LOG} | sed '/^$/d'
-[[ -e ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log ]] && \
-	awk '/Unable to install/ {print $10}' ${HOME_ASSISTANT_CONFIG_DIR}/home-assistant.log | cut -d ':' -f1 | sort -u
 fi
+
+echo
 }

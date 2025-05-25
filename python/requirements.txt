@@ -2,6 +2,8 @@ aiodhcpwatcher
 aiodiscover
 aiohttp_zlib_ng
 async-upnp-client
+bluetooth-auto-recovery
+bleak-retry-connector
 caldav
 croniter
 cronsim
@@ -22,7 +24,6 @@ paho-mqtt
 PyMetno
 PyNaCl
 PyQRCode
-PyTurboJPEG
 psutil
 pycountry
 pyipp
