@@ -2,7 +2,9 @@ aiodhcpwatcher
 aiodiscover
 aiohttp_zlib_ng
 async-upnp-client
+bluetooth-adapters
 bluetooth-auto-recovery
+bleak
 bleak-retry-connector
 caldav
 croniter
@@ -13,6 +15,7 @@ ffmpeg
 gTTS
 ha-av
 ha-ffmpeg
+habluetooth
 hassil
 holidays
 icalendar
