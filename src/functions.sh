@@ -346,6 +346,9 @@ revice_versions_on_problematic_hass_core_dependencies
 # Change to sources directory
 cd $INSTALL_SRC_DIR/home-assistant-core-${HOME_ASSISTANT_NEW_VERS_STRING}
 #
+# Apply patches
+patch -Np1 < ${PATCHES_DIR}/silence_deprecated_method_notice.patch
+#
 # Build translation files
 $PYTHON_CMD -m script.translations develop --all
 #
@@ -407,12 +410,12 @@ fi
 # Give HASS user permissions to install packages in Python virtual environment
 chown -R $HOME_ASSISTANT_USER $VENV_HOME_DIR
 #
-# Give HASS user permissions to run CLI commands used by some system sensors
+# Give HASS user permissions to run CLI commands used by some system sensors including managing bluez adapters
 [[ -d /etc/sudoers.d ]] || mkdir /etc/sudoers.d
 #
 cat > /etc/sudoers.d/${HOME_ASSISTANT_USER} <<ET
 Defaults:${HOME_ASSISTANT_USER}    !requiretty
-Cmnd_Alias SU_COMMANDS = /usr/bin/hostapd_cli
+Cmnd_Alias SU_COMMANDS = /usr/bin/hostapd_cli, /usr/bin/hciconfig
 ${HOME_ASSISTANT_USER}	ALL = NOPASSWD: SU_COMMANDS
 ET
 # Change sudoer file permissions

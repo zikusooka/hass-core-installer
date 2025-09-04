@@ -42,10 +42,10 @@ It also supports fully offline installs, upgrades, and uninstalls-provided you h
 
 ---
 
-## 🧱 System Dependencies
+## System Dependencies
 
 
-### ▶️ OpenSUSE
+### OpenSUSE
 sudo zypper install -y \
   python3 python3-pip python3-virtualenv \
   gcc gcc-c++ make \
@@ -56,7 +56,7 @@ sudo zypper install -y \
   systemd-devel glib2-devel \
   avahi-devel avahi-tools uv
 
-### ▶️ Fedora / Redhat
+### Fedora / Redhat
 
 sudo dnf install -y \
   python3 python3-virtualenv python3-pip \
@@ -68,7 +68,7 @@ sudo dnf install -y \
   systemd-devel glib2-devel \
   avahi avahi-libs avahi-tools avahi-glib avahi-compat-libdns_sda uv
 
-### ▶️ Debian / Ubuntu
+### Debian / Ubuntu
 
 ```bash
 sudo apt update

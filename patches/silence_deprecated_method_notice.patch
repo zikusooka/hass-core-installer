@@ -1,0 +1,11 @@
+--- a/homeassistant/components/homeassistant/__init__.py	2025-09-03 20:49:19.000000000 +0300
++++ b/homeassistant/components/homeassistant/__init__.py	2025-09-04 17:55:12.969076562 +0300
+@@ -417,7 +417,7 @@
+ 
+         installation_type = info["installation_type"][15:]
+         if installation_type in {"Core", "Container"}:
+-            deprecated_method = installation_type == "Core"
++            deprecated_method = installation_type == None
+             bit32 = _is_32_bit()
+             arch = info["arch"]
+             if bit32 and installation_type == "Container":
